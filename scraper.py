@@ -137,7 +137,7 @@ def parse_repo_info(folder_name):
 
 
 def load_existing_history(csv_path):
-    """读取已有 CSV，恢复 Features、Evaluation 以及记录旧 Star 数计算 Star Diff"""
+    """读取已有 CSV，恢复 Features、Reviews 内容并记录历史项"""
     history_data = {}
     if os.path.exists(csv_path):
         try:
@@ -145,25 +145,16 @@ def load_existing_history(csv_path):
             for _, row in df_old.iterrows():
                 key = row.get("Folder Name") or row.get("Addon Name")
                 if key:
-                    stars_val = row.get("Stars", 0)
-                    try:
-                        stars_int = int(stars_val)
-                    except ValueError:
-                        stars_int = 0
-
                     history_data[key] = {
                         "Features": row.get("Features", "")
                         if pd.notna(row.get("Features"))
                         else "",
-                        "Evaluation": row.get("Evaluation", "")
-                        if pd.notna(row.get("Evaluation"))
+                        "Reviews": row.get("Reviews", "")
+                        if pd.notna(row.get("Reviews"))
                         else "",
-                        "Old_Stars": stars_int,
                         "Full_Row": row.to_dict(),  # 保存旧数据用于保留已完全失效删库的历史记录
                     }
-            print(
-                f"发现已有 CSV 文件，已载入 {len(history_data)} 条历史标注与星数数据。"
-            )
+            print(f"发现已有 CSV 文件，已载入 {len(history_data)} 条历史标注数据。")
         except Exception as e:
             print(f"读取历史 CSV 文件失败: {e}")
     else:
@@ -180,7 +171,7 @@ def generate_readme(df, readme_path):
         "# Zotero Addon Monitor & Personal Reviews",
         "This repository is dedicated to tracking and recording my personal experiences with different Zotero addons. It aims to discover interesting, practical addons while minimize the time cost of redundant trial and error. (Note: Based on personal, subjective experience and non-exhaustive use.)",
         f"\n> **Auto-updated at:**：`{updated_time}` | Total addons: **{len(df)}**\n",
-        "| Addon Name | Stars | Star Diff | Last Updated | Release | Download | Features | Evaluation | About |",
+        "| Addon Name | Stars | New | Last Updated | Release | Download | Features | Reviews | About |",
         "| :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- | :--- |",
     ]
 
@@ -188,31 +179,24 @@ def generate_readme(df, readme_path):
         name = str(row["Addon Name"]).replace("|", "\\|")
         url = row["Repository URL"]
         stars = row["Stars"]
-        diff = row["Star Diff"]
+        is_new = row["New"]
         updated = row["Last Updated"]
         release = row["Latest Release"]
         downloads = row["Download Count"]
         features = (
             str(row["Features"]).replace("\n", " ") if pd.notna(row["Features"]) else ""
         )
-        eval_text = (
-            str(row["Evaluation"]).replace("\n", " ")
-            if pd.notna(row["Evaluation"])
-            else ""
+        review_text = (
+            str(row["Reviews"]).replace("\n", " ") if pd.notna(row["Reviews"]) else ""
         )
         about = str(row["About"]).replace("\n", " ") if pd.notna(row["About"]) else ""
 
-        # 格式化 Star Diff 显示
-        if str(diff).startswith("+"):
-            diff_str = f"🟢 `{diff}`"
-        elif str(diff).startswith("-"):
-            diff_str = f"🔴 `{diff}`"
-        else:
-            diff_str = "`0`"
+        # 格式化 New 显示
+        new_str = "🟢 `New`" if is_new == "New" else ""
 
         name_link = f"[{name}]({url})" if url.startswith("http") else name
 
-        line = f"| {name_link} | ⭐ {stars} | {diff_str} | {updated} | {release} | {int(downloads):,} | {features} | {eval_text} | {about} |"
+        line = f"| {name_link} | ⭐ {stars} | {new_str} | {updated} | {release} | {int(downloads):,} | {features} | {review_text} | {about} |"
         markdown_lines.append(line)
 
     with open(readme_path, "w", encoding="utf-8") as f:
@@ -249,21 +233,18 @@ def main():
             key = folder
             scraped_keys.add(key)
 
-            history = history_data.get(key, {})
+            history = history_data.get(key, None)
 
-            # 恢复 Features 和 Evaluation
-            info["Features"] = history.get("Features", "")
-            info["Evaluation"] = history.get("Evaluation", "")
-
-            # 计算 Star Diff (增量)
-            old_stars = history.get("Old_Stars", None)
-            new_stars = info["Stars"]
-
-            if old_stars is not None:
-                diff = new_stars - old_stars
-                info["Star Diff"] = f"+{diff}" if diff > 0 else str(diff)
+            if history is not None:
+                # 存在历史记录，恢复 Features 和 Reviews，并将 New 置为空
+                info["Features"] = history.get("Features", "")
+                info["Reviews"] = history.get("Reviews", "")
+                info["New"] = ""
             else:
-                info["Star Diff"] = "New"
+                # 不存在历史记录，说明是本次运行新增的插件
+                info["Features"] = ""
+                info["Reviews"] = ""
+                info["New"] = "New"
 
             scraped_results.append(info)
 
@@ -275,7 +256,7 @@ def main():
         if old_key not in scraped_keys:
             old_row = old_val.get("Full_Row", {})
             old_row["About"] = "[已被从列表中移除]"
-            old_row["Star Diff"] = "0"
+            old_row["New"] = ""
             scraped_results.append(old_row)
 
     if not scraped_results:
@@ -297,13 +278,13 @@ def main():
         "Addon Name",
         "Folder Name",
         "Stars",
-        "Star Diff",
+        "New",
         "Last Updated",
         "Latest Release",
         "Open Issues",
         "Download Count",
         "Features",
-        "Evaluation",
+        "Reviews",
         "About",
         "Repository URL",
     ]
