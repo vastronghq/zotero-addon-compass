@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 import time
 
 import pandas as pd
@@ -206,7 +207,7 @@ def generate_readme(df, readme_path):
 
         name_link = f"[{name}]({url})" if url.startswith("http") else name
 
-        line = f"| {name_link} | ⭐ {stars} | {diff_str} | {updated} | {release} | {downloads:,} | {tag} | {eval_text} | {about} |"
+        line = f"| {name_link} | ⭐ {stars} | {diff_str} | {updated} | {release} | {int(downloads):,} | {tag} | {eval_text} | {about} |"
         markdown_lines.append(line)
 
     with open(readme_path, "w", encoding="utf-8") as f:
@@ -216,6 +217,15 @@ def generate_readme(df, readme_path):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "render":
+        print("正在更新 README.md ...")
+        if os.path.exists(CSV_FILENAME):
+            df = pd.read_csv(CSV_FILENAME, dtype=str)
+            generate_readme(df, README_FILENAME)
+        else:
+            print(f"错误：未找到 {CSV_FILENAME}")
+        return
+
     # 1. 加载旧数据
     history_data = load_existing_history(CSV_FILENAME)
 
