@@ -137,7 +137,7 @@ def parse_repo_info(folder_name):
 
 
 def load_existing_history(csv_path):
-    """读取已有 CSV，恢复 Tag、Evaluation 以及记录旧 Star 数计算 Star Diff"""
+    """读取已有 CSV，恢复 Features、Evaluation 以及记录旧 Star 数计算 Star Diff"""
     history_data = {}
     if os.path.exists(csv_path):
         try:
@@ -152,7 +152,9 @@ def load_existing_history(csv_path):
                         stars_int = 0
 
                     history_data[key] = {
-                        "Tag": row.get("Tag", "") if pd.notna(row.get("Tag")) else "",
+                        "Features": row.get("Features", "")
+                        if pd.notna(row.get("Features"))
+                        else "",
                         "Evaluation": row.get("Evaluation", "")
                         if pd.notna(row.get("Evaluation"))
                         else "",
@@ -175,9 +177,10 @@ def generate_readme(df, readme_path):
     updated_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     markdown_lines = [
-        "# Zotero 插件库精选监控",
-        f"\n> **自动更新时间**：`{updated_time}` | 列表共计 **{len(df)}** 个插件\n",
-        "| Addon Name | Stars | Star Diff | Last Updated | Release | Download | Tag | Evaluation | About |",
+        "# Zotero Addon Monitor & Personal Reviews",
+        "This repository is dedicated to tracking and recording my personal experiences with different Zotero addons. It aims to discover interesting, practical addons while minimize the time cost of redundant trial and error. (Note: Based on personal, subjective experience and non-exhaustive use.)",
+        f"\n> **Auto-updated at:**：`{updated_time}` | Total addons: **{len(df)}**\n",
+        "| Addon Name | Stars | Star Diff | Last Updated | Release | Download | Features | Evaluation | About |",
         "| :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- | :--- |",
     ]
 
@@ -189,7 +192,9 @@ def generate_readme(df, readme_path):
         updated = row["Last Updated"]
         release = row["Latest Release"]
         downloads = row["Download Count"]
-        tag = str(row["Tag"]).replace("\n", " ") if pd.notna(row["Tag"]) else ""
+        features = (
+            str(row["Features"]).replace("\n", " ") if pd.notna(row["Features"]) else ""
+        )
         eval_text = (
             str(row["Evaluation"]).replace("\n", " ")
             if pd.notna(row["Evaluation"])
@@ -207,7 +212,7 @@ def generate_readme(df, readme_path):
 
         name_link = f"[{name}]({url})" if url.startswith("http") else name
 
-        line = f"| {name_link} | ⭐ {stars} | {diff_str} | {updated} | {release} | {int(downloads):,} | {tag} | {eval_text} | {about} |"
+        line = f"| {name_link} | ⭐ {stars} | {diff_str} | {updated} | {release} | {int(downloads):,} | {features} | {eval_text} | {about} |"
         markdown_lines.append(line)
 
     with open(readme_path, "w", encoding="utf-8") as f:
@@ -246,8 +251,8 @@ def main():
 
             history = history_data.get(key, {})
 
-            # 恢复 Tag 和 Evaluation
-            info["Tag"] = history.get("Tag", "")
+            # 恢复 Features 和 Evaluation
+            info["Features"] = history.get("Features", "")
             info["Evaluation"] = history.get("Evaluation", "")
 
             # 计算 Star Diff (增量)
@@ -297,7 +302,7 @@ def main():
         "Latest Release",
         "Open Issues",
         "Download Count",
-        "Tag",
+        "Features",
         "Evaluation",
         "About",
         "Repository URL",
