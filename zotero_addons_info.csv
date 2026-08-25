@@ -1,6 +1,0 @@
-﻿Addon Name,Stars,Star Diff,Last Updated,Latest Release,Open Issues,Download Count,Tag,Evaluation,About,Repository URL,Folder Name
-zotcard,643,New,2025-06-03,v3.3,55,928320,,,"ZotCard is a plug-in for Zotero, which is a card note-taking enhancement tool. It provides card templates (such as concept card, character card, golden sentence card, etc., by default, you can customize other card templates), so you can write cards quickly. In addition, it helps you sort cards and standardize card formats.",https://github.com/018/zotcard,018@zotcard
-zotero-excalidraw,64,New,2024-12-04,v1.1,12,46982,,,zotero connects to excalidraw,https://github.com/018/zotero-excalidraw,018@zotero-excalidraw
-zotero-odh,19,New,2026-08-10,v0.3.5,1,20869,,,a ODH wrapper for Zotero,https://github.com/1ywan/zotero-odh,1ywan@zotero-odh
-zotero-ai-assistant,1,New,2026-06-01,v1.1.3,0,501,,,zotero插件，主要负责对文献的内容进行总结并提取相关信息,https://github.com/1654842532/zotero-ai-assistant,1654842532@zotero-ai-assistant
-Zotero-AI-OCR,1,New,2026-08-10,v1.9.4,3,404,,,,https://github.com/4965898/zotero-AI-OCR,4965898@zotero-AI-OCR

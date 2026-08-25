@@ -48,7 +48,7 @@ def get_addon_folders():
             print(f"获取 addons 目录失败，HTTP 状态码: {response.status_code}")
             return []
         items = response.json()
-        return [item["name"] for item in items][:5]
+        return [item["name"] for item in items]
     except Exception as e:
         print(f"获取 addons 列表发生网络错误: {e}")
         return []
@@ -280,6 +280,7 @@ def main():
 
     column_order = [
         "Addon Name",
+        "Folder Name",
         "Stars",
         "Star Diff",
         "Last Updated",
@@ -290,7 +291,6 @@ def main():
         "Evaluation",
         "About",
         "Repository URL",
-        "Folder Name",
     ]
 
     # 确保所有列均在 DataFrame 中
