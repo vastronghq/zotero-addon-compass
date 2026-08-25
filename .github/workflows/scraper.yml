@@ -1,0 +1,64 @@
+name: Zotero Addons Scraper
+
+on:
+  # 1. 定时触发：使用 Cron 表达式设置运行周期
+  schedule:
+    # 每天 UTC 时间 0:00 (北京时间早晨 8:00) 自动触发一次
+    - cron: '0 0 * * 0'
+
+  # 2. 手动触发：允许你在 GitHub 页面上点击按钮随时手动运行
+  workflow_dispatch:
+
+jobs:
+  scrape-and-update:
+    runs-on: ubuntu-latest
+
+    # 赋予工作流写入仓库内容的权限（用于自动提交 commit 并推送）
+    permissions:
+      contents: write
+
+    steps:
+      # 1. 拉取当前仓库的代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 安装并配置 Python 极速工具 uv
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: 'latest'
+
+      # 3. 配置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 4. 使用 uv 安装依赖
+      - name: Install Dependencies
+        run: |
+          uv pip install --system requests pandas
+
+      # 5. 执行 Python 爬虫脚本
+      # GitHub Actions 会自动注入内置的 GITHUB_TOKEN 避免 API 限制
+      - name: Run Scraper Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scraper.py
+
+      # 6. 检查数据文件是否有变动，若有更新则自动 Commit 并 Push 回仓库
+      - name: Commit and Push Updated Data
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add zotero_addons_info.csv README.md
+
+          # 检查是否有未提交的文件改动
+          if git diff --staged --quiet; then
+            echo "没有数据更新，跳过 Commit。"
+          else
+            git commit -m "chore: 自动更新 Zotero 插件数据与 README [skip ci]"
+            git push
+          fi
