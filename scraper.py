@@ -171,7 +171,7 @@ def generate_readme(df, readme_path):
         "# Zotero Addon Monitor & Personal Reviews",
         "This repository is dedicated to tracking and recording my personal experiences with different Zotero addons. It aims to discover interesting, practical addons while minimize the time cost of redundant trial and error. (Note: Based on personal, subjective experience and non-exhaustive use.)",
         f"\n> **Auto-updated at:**：`{updated_time}` | Total addons: **{len(df)}**\n",
-        "| Addon Name | Stars | New | Last Updated | Release | Download | Features | Reviews | About |",
+        "| Addon Name | Stars | New | Features | Reviews | Last Updated | Release | Download | About |",
         "| :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- | :--- |",
     ]
 
@@ -196,7 +196,7 @@ def generate_readme(df, readme_path):
 
         name_link = f"[{name}]({url})" if url.startswith("http") else name
 
-        line = f"| {name_link} | ⭐ {stars} | {new_str} | {updated} | {release} | {int(downloads):,} | {features} | {review_text} | {about} |"
+        line = f"| {name_link} | ⭐ {stars} | {new_str} | {features} | {review_text} | {updated} | {release} | {int(downloads):,} | {about} |"
         markdown_lines.append(line)
 
     with open(readme_path, "w", encoding="utf-8") as f:
@@ -279,12 +279,12 @@ def main():
         "Folder Name",
         "Stars",
         "New",
+        "Features",
+        "Reviews",
         "Last Updated",
         "Latest Release",
         "Open Issues",
         "Download Count",
-        "Features",
-        "Reviews",
         "About",
         "Repository URL",
     ]
