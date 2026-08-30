@@ -8,11 +8,11 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# 文件名配置
+# Filename configuration
 CSV_FILENAME = "zotero_addons_info.csv"
 README_FILENAME = "README.md"
 
-# GitHub API 请求头（建议在环境变量中设置 GITHUB_TOKEN 以获得每小时 5000 次的请求限额）
+# GitHub API headers (set GITHUB_TOKEN in environment variables for a limit of 5000 requests/hour)
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -23,7 +23,7 @@ if GITHUB_TOKEN:
 
 
 def create_session():
-    """创建带有网络自动重试机制的 Session，提高稳定性"""
+    """Create a Session with automatic retry mechanism to improve stability."""
     session = requests.Session()
     retries = Retry(
         total=3,
@@ -41,42 +41,46 @@ SESSION = create_session()
 
 
 def get_addon_folders():
-    """获取 syt2/zotero-addons-scraper/addons 路径下的所有目录/文件名"""
+    """Get all directory/file names under syt2/zotero-addons-scraper/addons path."""
     api_url = "https://api.github.com/repos/syt2/zotero-addons-scraper/contents/addons"
     try:
         response = SESSION.get(api_url, headers=HEADERS, timeout=10)
         if response.status_code != 200:
-            print(f"获取 addons 目录失败，HTTP 状态码: {response.status_code}")
+            print(
+                f"Failed to get addons directory, HTTP status code: {response.status_code}"
+            )
             return []
         items = response.json()
         return [item["name"] for item in items]
     except Exception as e:
-        print(f"获取 addons 列表发生网络错误: {e}")
+        print(f"Network error while fetching addons list: {e}")
         return []
 
 
 def parse_repo_info(folder_name):
-    """抓取仓库的 Star、Issue、最后更新、最新 Release 版本及下载量等信息"""
+    """Scrape repository info such as Stars, Issues, Last Updated, Latest Release version, and Download Count."""
     if "@" not in folder_name:
-        print(f"跳过不符合格式的项: {folder_name}")
+        print(f"Skipping improperly formatted item: {folder_name}")
         return None
 
     owner, repo_name = folder_name.split("@", 1)
     target_url = f"https://github.com/{owner}/{repo_name}"
     api_url = f"https://api.github.com/repos/{owner}/{repo_name}"
 
-    print(f"正在抓取: {target_url}")
+    print(f"Scraping: {target_url}")
+
+    scrape_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     try:
         res = SESSION.get(api_url, headers=HEADERS, timeout=10)
         if res.status_code == 200:
             data = res.json()
 
-            # ISO 8601 时间格式化转换为本地/简洁日期
+            # Format ISO 8601 timestamp to local/concise date format
             pushed_at = data.get("pushed_at", "")
             last_updated = pushed_at.split("T")[0] if pushed_at else "N/A"
 
-            # 获取 Release 信息及总下载量
+            # Get Release information and total download count
             releases_url = f"{api_url}/releases"
             rel_res = SESSION.get(releases_url, headers=HEADERS, timeout=10)
 
@@ -86,7 +90,7 @@ def parse_repo_info(folder_name):
             if rel_res.status_code == 200:
                 releases = rel_res.json()
                 if releases and isinstance(releases, list):
-                    # 获取最新非 draft/prerelease 版本（没有则取第一个）
+                    # Get the latest non-draft/non-prerelease version (if none, take the first one)
                     valid_releases = [
                         r
                         for r in releases
@@ -95,7 +99,87 @@ def parse_repo_info(folder_name):
                     latest = valid_releases[0] if valid_releases else releases[0]
                     latest_release = latest.get("tag_name", "N/A")
 
-                    # 统计所有 release 的 asset 总下载量
+                    # Calculate total asset download count across all releases
+                    for rel in releases:
+                        for asset in rel.get("assets", []):
+                            total_downloads += asset.get("download_count", 0)
+
+            return {
+                "Scrape Time": scrape_time,
+                "Folder Name": folder_name,
+                "Addon Name": data.get("name", repo_name),
+                "About": data.get("description", "") or "",
+                "Stars": data.get("stargazers_count", 0),
+                "Last Updated": last_updated,
+                "Latest Release": latest_release,
+                "Open Issues": data.get("open_issues_count", 0),
+                "Download Count": total_downloads,
+                "Repository URL": target_url,
+                "Is_Exist": True,
+            }
+
+        elif res.status_code == 404:
+            print(f"Repository does not exist or has been deleted: {target_url}")
+            return {
+                "Scrape Time": scrape_time,
+                "Folder Name": folder_name,
+                "Addon Name": folder_name,
+                "About": "[Repository removed or deleted (404)]",
+                "Stars": 0,
+                "Last Updated": "N/A",
+                "Latest Release": "N/A",
+                "Open Issues": 0,
+                "Download Count": 0,
+                "Repository URL": target_url,
+                "Is_Exist": False,
+            }
+        else:
+            print(f"Request failed ({res.status_code}): {target_url}")
+            return None
+
+    except Exception as e:
+        print(f"Exception while scraping {target_url}: {e}")
+        return None
+    """Scrape repository info such as Stars, Issues, Last Updated, Latest Release version, and Download Count."""
+    if "@" not in folder_name:
+        print(f"Skipping improperly formatted item: {folder_name}")
+        return None
+
+    owner, repo_name = folder_name.split("@", 1)
+    target_url = f"https://github.com/{owner}/{repo_name}"
+    api_url = f"https://api.github.com/repos/{owner}/{repo_name}"
+
+    print(f"Scraping: {target_url}")
+
+    try:
+        res = SESSION.get(api_url, headers=HEADERS, timeout=10)
+        if res.status_code == 200:
+            data = res.json()
+
+            # Format ISO 8601 timestamp to local/concise date format
+            pushed_at = data.get("pushed_at", "")
+            last_updated = pushed_at.split("T")[0] if pushed_at else "N/A"
+
+            # Get Release information and total download count
+            releases_url = f"{api_url}/releases"
+            rel_res = SESSION.get(releases_url, headers=HEADERS, timeout=10)
+
+            latest_release = "No Release"
+            total_downloads = 0
+
+            if rel_res.status_code == 200:
+                releases = rel_res.json()
+                if releases and isinstance(releases, list):
+                    # Get the latest non-draft/non-prerelease version (if none, take the first one)
+                    valid_releases = [
+                        r
+                        for r in releases
+                        if not r.get("draft") and not r.get("prerelease")
+                    ]
+                    latest = valid_releases[0] if valid_releases else releases[0]
+                    latest_release = latest.get("tag_name", "N/A")
+
+                    # Calculate total asset download count across all releases
                     for rel in releases:
                         for asset in rel.get("assets", []):
                             total_downloads += asset.get("download_count", 0)
@@ -114,11 +198,11 @@ def parse_repo_info(folder_name):
             }
 
         elif res.status_code == 404:
-            print(f"仓库不存在或已被删除: {target_url}")
+            print(f"Repository does not exist or has been deleted: {target_url}")
             return {
                 "Folder Name": folder_name,
                 "Addon Name": folder_name,
-                "About": "[仓库已移除或删库 (404)]",
+                "About": "[Repository removed or deleted (404)]",
                 "Stars": 0,
                 "Last Updated": "N/A",
                 "Latest Release": "N/A",
@@ -128,16 +212,16 @@ def parse_repo_info(folder_name):
                 "Is_Exist": False,
             }
         else:
-            print(f"请求失败 ({res.status_code}): {target_url}")
+            print(f"Request failed ({res.status_code}): {target_url}")
             return None
 
     except Exception as e:
-        print(f"抓取 {target_url} 异常: {e}")
+        print(f"Exception while scraping {target_url}: {e}")
         return None
 
 
 def load_existing_history(csv_path):
-    """读取已有 CSV，恢复 Features、Reviews 内容并记录历史项"""
+    """Read existing CSV to restore Features and Reviews content and keep historical items."""
     history_data = {}
     if os.path.exists(csv_path):
         try:
@@ -152,25 +236,27 @@ def load_existing_history(csv_path):
                         "Reviews": row.get("Reviews", "")
                         if pd.notna(row.get("Reviews"))
                         else "",
-                        "Full_Row": row.to_dict(),  # 保存旧数据用于保留已完全失效删库的历史记录
+                        "Full_Row": row.to_dict(),  # Save old data to retain historical records of deleted repositories
                     }
-            print(f"发现已有 CSV 文件，已载入 {len(history_data)} 条历史标注数据。")
+            print(
+                f"Found existing CSV file, loaded {len(history_data)} historical annotated entries."
+            )
         except Exception as e:
-            print(f"读取历史 CSV 文件失败: {e}")
+            print(f"Failed to read existing CSV file: {e}")
     else:
-        print("未发现历史 CSV 文件，将直接创建新文件。")
+        print("No existing CSV file found, creating a new one directly.")
 
     return history_data
 
 
 def generate_readme(df, readme_path):
-    """根据最新的 DataFrame 数据生成排版优美、带有超链接的 README.md 文档"""
+    """Generate a well-formatted README.md document with hyperlinks based on the latest DataFrame data."""
     updated_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     markdown_lines = [
         "# Zotero Addon Monitor & Personal Reviews",
         "This repository is dedicated to tracking and recording my personal experiences with different Zotero addons. It aims to discover interesting, practical addons while minimize the time cost of redundant trial and error. (Note: Based on personal, subjective experience and non-exhaustive use.)",
-        f"\n> **Auto-updated at:**：`{updated_time}` | Total addons: **{len(df)}**\n",
+        f"\n> **Auto-updated at:** `{updated_time}` | Total addons: **{len(df)}**\n",
         "| Addon Name | Stars | New | Features | Reviews | Last Updated | Release | Download | About |",
         "| :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- | :--- |",
     ]
@@ -191,7 +277,7 @@ def generate_readme(df, readme_path):
         )
         about = str(row["About"]).replace("\n", " ") if pd.notna(row["About"]) else ""
 
-        # 格式化 New 显示
+        # Format New tag display
         new_str = "🟢 `New`" if is_new == "New" else ""
 
         name_link = f"[{name}]({url})" if url.startswith("http") else name
@@ -202,31 +288,31 @@ def generate_readme(df, readme_path):
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write("\n".join(markdown_lines))
 
-    print(f"已成功渲染并输出 Markdown 文档到 `{readme_path}`")
+    print(f"Successfully rendered and output Markdown document to `{readme_path}`")
 
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "render":
-        print("正在更新 README.md ...")
+        print("Updating README.md ...")
         if os.path.exists(CSV_FILENAME):
             df = pd.read_csv(CSV_FILENAME, dtype=str)
             generate_readme(df, README_FILENAME)
         else:
-            print(f"错误：未找到 {CSV_FILENAME}")
+            print(f"Error: {CSV_FILENAME} not found")
         return
 
-    # 1. 加载旧数据
+    # 1. Load historical data
     history_data = load_existing_history(CSV_FILENAME)
 
-    # 2. 获取 addons 目录下的文件夹列表
-    print("\n开始获取最新 addons 列表...")
+    # 2. Get folder list under addons directory
+    print("\nStarting to fetch latest addons list...")
     folders = get_addon_folders()
-    print(f"共获取到 {len(folders)} 个文件/文件夹名称。\n")
+    print(f"Fetched {len(folders)} file/folder names in total.\n")
 
     scraped_results = []
     scraped_keys = set()
 
-    # 3. 逐个抓取仓库信息
+    # 3. Scrape repository info one by one
     for folder in folders:
         info = parse_repo_info(folder)
         if info:
@@ -236,34 +322,34 @@ def main():
             history = history_data.get(key, None)
 
             if history is not None:
-                # 存在历史记录，恢复 Features 和 Reviews，并将 New 置为空
+                # History exists: restore Features and Reviews, clear New tag
                 info["Features"] = history.get("Features", "")
                 info["Reviews"] = history.get("Reviews", "")
                 info["New"] = ""
             else:
-                # 不存在历史记录，说明是本次运行新增的插件
+                # History does not exist: mark as new addon added in this run
                 info["Features"] = ""
                 info["Reviews"] = ""
                 info["New"] = "New"
 
             scraped_results.append(info)
 
-        # 每次抓取后暂停 0.4 秒，防止 API 触发限流
+        # Pause 0.4 seconds after each scrape to prevent hitting API rate limits
         time.sleep(0.4)
 
-    # 4. 保留那些原先存在，但本次在 GitHub 列表中被彻底删掉的项目记录
+    # 4. Retain records that previously existed but were removed from the GitHub list in this run
     for old_key, old_val in history_data.items():
         if old_key not in scraped_keys:
             old_row = old_val.get("Full_Row", {})
-            old_row["About"] = "[已被从列表中移除]"
+            old_row["About"] = "[Removed from the list]"
             old_row["New"] = ""
             scraped_results.append(old_row)
 
     if not scraped_results:
-        print("未获取到任何有效数据，程序中断。")
+        print("No valid data fetched, program aborted.")
         return
 
-    # 5. 构建 DataFrame、格式化并按 Stars 降序排列
+    # 5. Build DataFrame, format, and sort by Stars descending
     df = pd.DataFrame(scraped_results)
 
     df["Stars"] = pd.to_numeric(df["Stars"], errors="coerce").fillna(0).astype(int)
@@ -274,7 +360,9 @@ def main():
         pd.to_numeric(df["Open Issues"], errors="coerce").fillna(0).astype(int)
     )
 
+    # 将 "Scrape Time" 放在第一列
     column_order = [
+        "Scrape Time",
         "Addon Name",
         "Folder Name",
         "Stars",
@@ -289,17 +377,17 @@ def main():
         "Repository URL",
     ]
 
-    # 确保所有列均在 DataFrame 中
+    # Ensure all columns exist in DataFrame
     for col in column_order:
         if col not in df.columns:
             df[col] = ""
 
     df = df[column_order]
-    df = df.sort_values(by="Stars", ascending=False)
+    df = df.sort_values(by=["New", "Stars"], ascending=[False, False])
 
-    # 6. 保存 CSV 与 Markdown 文档
+    # 6. Save CSV and Markdown document
     df.to_csv(CSV_FILENAME, index=False, encoding="utf-8-sig")
-    print(f"\n全量数据已保存至 CSV: {CSV_FILENAME}")
+    print(f"\nFull dataset saved to CSV: {CSV_FILENAME}")
 
     generate_readme(df, README_FILENAME)
 
