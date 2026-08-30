@@ -257,11 +257,12 @@ def generate_readme(df, readme_path):
         "# Zotero Addon Monitor & Personal Reviews",
         "This repository is dedicated to tracking and recording my personal experiences with different Zotero addons. It aims to discover interesting, practical addons while minimize the time cost of redundant trial and error. (Note: Based on personal, subjective experience and non-exhaustive use.)",
         f"\n> **Auto-updated at:** `{updated_time}` | Total addons: **{len(df)}**\n",
-        "| Addon Name | Stars | New | Features | Reviews | Last Updated | Release | Download | About |",
-        "| :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- | :--- |",
+        "| Scrape Time | Addon Name | Stars | New | Features | Reviews | Last Updated | Release | Download | About |",
+        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- | :--- |",
     ]
 
     for _, row in df.iterrows():
+        scrape_time = row["Scrape Time"]
         name = str(row["Addon Name"]).replace("|", "\\|")
         url = row["Repository URL"]
         stars = row["Stars"]
@@ -282,7 +283,7 @@ def generate_readme(df, readme_path):
 
         name_link = f"[{name}]({url})" if url.startswith("http") else name
 
-        line = f"| {name_link} | ⭐ {stars} | {new_str} | {features} | {review_text} | {updated} | {release} | {int(downloads):,} | {about} |"
+        line = f"| {scrape_time} | {name_link} | ⭐ {stars} | {new_str} | {features} | {review_text} | {updated} | {release} | {int(downloads):,} | {about} |"
         markdown_lines.append(line)
 
     with open(readme_path, "w", encoding="utf-8") as f:
